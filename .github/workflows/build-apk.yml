@@ -1,0 +1,54 @@
+
+name: Build Floating Assistant APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ambil file proyek
+        uses: actions/checkout@v4
+
+      - name: Siapkan Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Siapkan Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instal Android SDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Ekstrak proyek ZIP
+        run: |
+          ZIP=$(find . -maxdepth 1 -type f -iname '*.zip' | head -n 1)
+          if [ -z "$ZIP" ]; then
+            echo "File ZIP tidak ditemukan"
+            exit 1
+          fi
+          mkdir -p source
+          unzip -q "$ZIP" -d source
+          echo "PROJECT_DIR=source/FloatingAssistant" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Kompilasi APK
+        run: gradle -p "$PROJECT_DIR" assembleDebug
+
+      - name: Simpan APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FloatingAssistant-APK
+          path: source/FloatingAssistant/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          
